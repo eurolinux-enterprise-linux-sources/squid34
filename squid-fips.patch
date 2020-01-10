@@ -1,0 +1,277 @@
+diff --git a/helpers/basic_auth/NCSA/basic_ncsa_auth.cc b/helpers/basic_auth/NCSA/basic_ncsa_auth.cc
+index c65330e..8ef52ff 100644
+--- a/helpers/basic_auth/NCSA/basic_ncsa_auth.cc
++++ b/helpers/basic_auth/NCSA/basic_ncsa_auth.cc
+@@ -148,37 +148,30 @@ main(int argc, char **argv)
+             SEND_ERR("No such user");
+             continue;
+         }
+-        char *crypted = NULL;
+ #if HAVE_CRYPT
+-        size_t passwordLength = strlen(passwd);
+-        // Bug 3831: given algorithms more secure than DES crypt() does not truncate, so we can ignore the bug 3107 length checks below
+-        // '$1$' = MD5, '$2a$' = Blowfish, '$5$' = SHA256 (Linux), '$6$' = SHA256 (BSD) and SHA512
+-        if (passwordLength > 1 && u->passwd[0] == '$' &&
+-                (crypted = crypt(passwd, u->passwd)) && strcmp(u->passwd, crypted) == 0) {
++        char *crypted = crypt(passwd, u->passwd);
++        if (strcmp(u->passwd, crypted) == 0){
+             SEND_OK("");
+-            continue;
+-        }
+-        // 'other' prefixes indicate DES algorithm.
+-        if (passwordLength <= 8 && (crypted = crypt(passwd, u->passwd)) && (strcmp(u->passwd, crypted) == 0)) {
+-            SEND_OK("");
+-            continue;
+-        }
+-        if (passwordLength > 8 && (crypted = crypt(passwd, u->passwd)) && (strcmp(u->passwd, crypted) == 0)) {
+-            // Bug 3107: crypt() DES functionality silently truncates long passwords.
+-            SEND_ERR("Password too long. Only 8 characters accepted.");
+-            continue;
+-        }
++        } else {
++            char altpasswd[255]; /* more then enough for sha512 */
++            altpasswd[0] = '\0';
++            strncat(altpasswd, "$1$", strlen("$1$"));
++            strncat(altpasswd, passwd, strlen(passwd));
++            crypted = crypt(altpasswd, u->passwd);
+ 
+-#endif
+-        if ( (crypted = crypt_md5(passwd, u->passwd)) && strcmp(u->passwd, crypted) == 0) {
+-            SEND_OK("");
+-            continue;
+-        }
+-        if ( (crypted = md5sum(passwd)) && strcmp(u->passwd, crypted) == 0) {
+-            SEND_OK("");
+-            continue;
++            if ( (crypted != NULL) && (strcmp(u->passwd, crypted) == 0)) {
++                  SEND_OK("");
++            } else {
++                  if (strcmp(u->passwd, (char *) md5sum(passwd)) == 0) { /* md5 without salt and magic strings - Added by Ramon de Carvalho and Rodrigo  Rubira Branco */
++                      SEND_OK("");
++                  } else {
++                      SEND_ERR("Wrong password");
++                  }
++            }
+         }
++#else
+         SEND_ERR("Wrong password");
++#endif
+     }
+     if (hash != NULL) {
+         hashFreeItems(hash, my_free);
+diff --git a/include/md5.h b/include/md5.h
+index 4bc5e69..0639145 100644
+--- a/include/md5.h
++++ b/include/md5.h
+@@ -43,17 +43,28 @@ typedef struct md5_ctx SquidMD5_CTX;
+  * Still in the public domain.
+  *
+  */
++#include <openssl/md5.h>
+ 
++#if 0
+ typedef struct SquidMD5Context {
+     uint32_t buf[4];
+     uint32_t bytes[2];
+     uint32_t in[16];
+ } SquidMD5_CTX;
++#endif
+ 
++typedef MD5_CTX SquidMD5_CTX;
++#define SquidMD5Init(x) MD5_Init(x)
++#define SquidMD5Update(x,y,z) MD5_Update(x,y,z)
++#define SquidMD5Final(x,y) MD5_Final(x,y)
++#define SquidMD5Transform(x,y) MD5_Transform(x,y)
++
++#if 0
+ SQUIDCEXTERN void SquidMD5Init(struct SquidMD5Context *context);
+ SQUIDCEXTERN void SquidMD5Update(struct SquidMD5Context *context, const void *buf, unsigned len);
+ SQUIDCEXTERN void SquidMD5Final(uint8_t digest[16], struct SquidMD5Context *context);
+ SQUIDCEXTERN void SquidMD5Transform(uint32_t buf[4], uint32_t const in[16]);
++#endif
+ 
+ #define SQUID_MD5_DIGEST_LENGTH         16
+ 
+diff --git a/lib/md5.c b/lib/md5.c
+index c89e042..df35e2d 100644
+--- a/lib/md5.c
++++ b/lib/md5.c
+@@ -57,6 +57,7 @@ static byteSwap(uint32_t * buf, unsigned words)
+ #define byteSwap(buf,words)
+ #endif
+ 
++#if 0
+ /*
+  * Start MD5 accumulation.  Set bit count to 0 and buffer to mysterious
+  * initialization constants.
+@@ -149,6 +150,7 @@ SquidMD5Final(unsigned char digest[16], struct SquidMD5Context *ctx)
+     memcpy(digest, ctx->buf, 16);
+     memset(ctx, 0, sizeof(*ctx));	/* In case it's sensitive */
+ }
++#endif
+ 
+ #ifndef ASM_MD5
+ 
+@@ -163,7 +165,7 @@ SquidMD5Final(unsigned char digest[16], struct SquidMD5Context *ctx)
+ /* This is the central step in the MD5 algorithm. */
+ #define MD5STEP(f,w,x,y,z,in,s) \
+ 	 (w += f(x,y,z) + in, w = (w<<s | w>>(32-s)) + x)
+-
++#if 0
+ /*
+  * The core of the MD5 algorithm, this alters an existing MD5 hash to
+  * reflect the addition of 16 longwords of new data.  SquidMD5Update blocks
+@@ -252,6 +254,6 @@ SquidMD5Transform(uint32_t buf[4], uint32_t const in[16])
+     buf[2] += c;
+     buf[3] += d;
+ }
+-
++#endif
+ #endif /* !ASM_MD5 */
+ #endif /* HAVE_ETTLE_MD5_H */
+diff --git a/helpers/basic_auth/NCSA/crypt_md5.cc b/helpers/basic_auth/NCSA/crypt_md5.cc
+index 1890d4e..b0466f9 100644
+--- a/helpers/basic_auth/NCSA/crypt_md5.cc
++++ b/helpers/basic_auth/NCSA/crypt_md5.cc
+@@ -56,7 +56,7 @@ char *crypt_md5(const char *pw, const char *salt)
+     static const char *sp, *ep;
+     unsigned char final[16];
+     int sl, pl, i, j;
+-    SquidMD5_CTX ctx, ctx1;
++    MD5_CTX ctx, ctx1;
+     unsigned long l;
+ 
+     if (*salt == '$') {
+@@ -180,7 +180,7 @@ char *crypt_md5(const char *pw, const char *salt)
+ char *md5sum(const char *s)
+ {
+     static unsigned char digest[16];
+-    SquidMD5_CTX ctx;
++    MD5_CTX ctx;
+     int idx;
+     static char sum[33];
+ 
+diff --git a/helpers/basic_auth/RADIUS/basic_radius_auth.cc b/helpers/basic_auth/RADIUS/basic_radius_auth.cc
+index 0672a1e..da60118 100644
+--- a/helpers/basic_auth/RADIUS/basic_radius_auth.cc
++++ b/helpers/basic_auth/RADIUS/basic_radius_auth.cc
+@@ -155,7 +155,7 @@ time_since(const struct timeval *when)
+ static void
+ md5_calc(uint8_t out[16], void *in, size_t len)
+ {
+-    SquidMD5_CTX ctx;
++    MD5_CTX ctx;
+     SquidMD5Init(&ctx);
+     SquidMD5Update(&ctx, in, len);
+     SquidMD5Final(out, &ctx);
+diff --git a/include/md5.h b/include/md5.h
+index 0639145..67bccc1 100644
+--- a/include/md5.h
++++ b/include/md5.h
+@@ -53,7 +53,6 @@ typedef struct SquidMD5Context {
+ } SquidMD5_CTX;
+ #endif
+ 
+-typedef MD5_CTX SquidMD5_CTX;
+ #define SquidMD5Init(x) MD5_Init(x)
+ #define SquidMD5Update(x,y,z) MD5_Update(x,y,z)
+ #define SquidMD5Final(x,y) MD5_Final(x,y)
+diff --git a/lib/rfc2617.c b/lib/rfc2617.c
+index 06108bd..eff8493 100644
+--- a/lib/rfc2617.c
++++ b/lib/rfc2617.c
+@@ -114,7 +114,7 @@ DigestCalcHA1(
+     HASHHEX SessionKey
+ )
+ {
+-    SquidMD5_CTX Md5Ctx;
++    MD5_CTX Md5Ctx;
+ 
+     if (pszUserName) {
+         SquidMD5Init(&Md5Ctx);
+@@ -153,7 +153,7 @@ DigestCalcResponse(
+     HASHHEX Response		/* request-digest or response-digest */
+ )
+ {
+-    SquidMD5_CTX Md5Ctx;
++    MD5_CTX Md5Ctx;
+     HASH HA2;
+     HASH RespHash;
+     HASHHEX HA2Hex;
+diff --git a/src/MemObject.cc b/src/MemObject.cc
+index 7e40369..f11d78c 100644
+--- a/src/MemObject.cc
++++ b/src/MemObject.cc
+@@ -55,9 +55,9 @@ unsigned int
+ url_checksum(const char *url)
+ {
+     unsigned int ck;
+-    SquidMD5_CTX M;
++    MD5_CTX M;
+     static unsigned char digest[16];
+-    SquidMD5Init(&M);
++    private_MD5_Init(&M); /* allow even in fips mode */
+     SquidMD5Update(&M, (unsigned char *) url, strlen(url));
+     SquidMD5Final(digest, &M);
+     memcpy(&ck, digest, sizeof(ck));
+diff --git a/src/store_key_md5.cc b/src/store_key_md5.cc
+index 42145cb..c1245b3 100644
+--- a/src/store_key_md5.cc
++++ b/src/store_key_md5.cc
+@@ -104,10 +104,10 @@ const cache_key *
+ storeKeyPrivate(const char *url, const HttpRequestMethod& method, int id)
+ {
+     static cache_key digest[SQUID_MD5_DIGEST_LENGTH];
+-    SquidMD5_CTX M;
++    MD5_CTX M;
+     assert(id > 0);
+     debugs(20, 3, "storeKeyPrivate: " << method << " " << url);
+-    SquidMD5Init(&M);
++    private_MD5_Init(&M); /* allow even in fips mode */
+     SquidMD5Update(&M, (unsigned char *) &id, sizeof(id));
+     SquidMD5Update(&M, (unsigned char *) &method, sizeof(method));
+     SquidMD5Update(&M, (unsigned char *) url, strlen(url));
+@@ -120,8 +120,8 @@ storeKeyPublic(const char *url, const HttpRequestMethod& method)
+ {
+     static cache_key digest[SQUID_MD5_DIGEST_LENGTH];
+     unsigned char m = (unsigned char) method.id();
+-    SquidMD5_CTX M;
+-    SquidMD5Init(&M);
++    MD5_CTX M;
++    private_MD5_Init(&M); /* allow even in fips mode */
+     SquidMD5Update(&M, &m, sizeof(m));
+     SquidMD5Update(&M, (unsigned char *) url, strlen(url));
+     SquidMD5Final(digest, &M);
+@@ -140,8 +140,8 @@ storeKeyPublicByRequestMethod(HttpRequest * request, const HttpRequestMethod& me
+     static cache_key digest[SQUID_MD5_DIGEST_LENGTH];
+     unsigned char m = (unsigned char) method.id();
+     const char *url = request->storeId(); /* storeId returns the right storeID\canonical URL for the md5 calc */
+-    SquidMD5_CTX M;
+-    SquidMD5Init(&M);
++    MD5_CTX M;
++    private_MD5_Init(&M); /* allow even in fips mode */
+     SquidMD5Update(&M, &m, sizeof(m));
+     SquidMD5Update(&M, (unsigned char *) url, strlen(url));
+ 
+diff --git a/src/wccp2.cc b/src/wccp2.cc
+index 14bae00..a08fff2 100644
+--- a/src/wccp2.cc
++++ b/src/wccp2.cc
+@@ -574,7 +574,7 @@ wccp2_update_md5_security(char *password, char *ptr, char *packet, int len)
+ {
+     uint8_t md5Digest[SQUID_MD5_DIGEST_LENGTH];
+     char pwd[WCCP2_PASSWORD_LEN];
+-    SquidMD5_CTX M;
++    MD5_CTX M;
+ 
+     struct wccp2_security_md5_t *ws;
+ 
+@@ -628,7 +628,7 @@ wccp2_check_security(struct wccp2_service_list_t *srv, char *security, char *pac
+     struct wccp2_security_md5_t *ws = (struct wccp2_security_md5_t *) security;
+     uint8_t md5Digest[SQUID_MD5_DIGEST_LENGTH], md5_challenge[SQUID_MD5_DIGEST_LENGTH];
+     char pwd[WCCP2_PASSWORD_LEN];
+-    SquidMD5_CTX M;
++    MD5_CTX M;
+ 
+     /* Make sure the security type matches what we expect */
+ 

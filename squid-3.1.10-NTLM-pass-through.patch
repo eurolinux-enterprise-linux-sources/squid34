@@ -1,0 +1,60 @@
+diff --git a/src/SquidConfig.h b/src/SquidConfig.h
+index d3705ed..8ecd88c 100644
+--- a/src/SquidConfig.h
++++ b/src/SquidConfig.h
+@@ -351,6 +351,7 @@ public:
+ #endif /* FOLLOW_X_FORWARDED_FOR */
+ 
+         int WIN32_IpAddrChangeMonitor;
++        int http10;
+         int memory_cache_first;
+         int memory_cache_disk;
+         int hostStrictVerify;
+diff --git a/src/cf.data.pre b/src/cf.data.pre
+index a4dc772..e2fa78c 100644
+--- a/src/cf.data.pre
++++ b/src/cf.data.pre
+@@ -9008,4 +9008,13 @@ DOC_START
+ 	See also: workers
+ DOC_END
+ 
++NAME: http10
++TYPE: onoff
++LOC: Config.onoff.http10
++DEFAULT: off
++DOC_START
++  Enable this option and Squid will revert using http header
++  'Proxy-Connection' to indicate persistent connection.
++DOC_END
++
+ EOF
+diff --git a/src/client_side_reply.cc b/src/client_side_reply.cc
+index 6512394..2a32ab3 100644
+--- a/src/client_side_reply.cc
++++ b/src/client_side_reply.cc
+@@ -1502,7 +1502,7 @@ clientReplyContext::buildReplyHeader()
+         hdr->putStr(HDR_VIA, strVia.termedBuf());
+     }
+     /* Signal keep-alive or close explicitly */
+-    hdr->putStr(HDR_CONNECTION, request->flags.proxyKeepalive ? "keep-alive" : "close");
++    hdr->putStr(Config.onoff.http10 ? HDR_PROXY_CONNECTION : HDR_CONNECTION, request->flags.proxyKeepalive ? "keep-alive" : "close");
+ 
+ #if ADD_X_REQUEST_URI
+     /*
+diff --git a/src/http.cc b/src/http.cc
+index 33caadc..452f6e5 100644
+--- a/src/http.cc
++++ b/src/http.cc
+@@ -1853,7 +1853,11 @@ HttpStateData::httpBuildRequestHeader(HttpRequest * request,
+ 
+     /* maybe append Connection: keep-alive */
+     if (flags.keepalive) {
+-        hdr_out->putStr(HDR_CONNECTION, "keep-alive");
++        if (flags.proxying && Config.onoff.http10) {
++          hdr_out->putStr(HDR_PROXY_CONNECTION, "keep-alive");
++        } else {
++          hdr_out->putStr(HDR_CONNECTION, "keep-alive");
++        }
+     }
+ 
+     /* append Front-End-Https */

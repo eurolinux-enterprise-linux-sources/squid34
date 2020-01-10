@@ -1,0 +1,77 @@
+diff -up squid-3.1.9/aclocal.m4.ltdl squid-3.1.9/aclocal.m4
+--- squid-3.1.9/aclocal.m4.ltdl	2010-10-25 13:34:41.000000000 +0200
++++ squid-3.1.9/aclocal.m4	2010-11-01 14:14:55.297324980 +0100
+@@ -1117,7 +1117,7 @@ _LT_SET_OPTIONS([$0], [$1])
+ LIBTOOL_DEPS="$ltmain"
+ 
+ # Always use our own libtool.
+-LIBTOOL='$(SHELL) $(top_builddir)/libtool'
++LIBTOOL='$(SHELL) libtool'
+ AC_SUBST(LIBTOOL)dnl
+ 
+ _LT_SETUP
+diff -up squid-3.1.9/configure.ltdl squid-3.1.9/configure
+--- squid-3.1.9/configure.ltdl	2010-10-25 13:35:32.000000000 +0200
++++ squid-3.1.9/configure	2010-11-01 14:14:55.320299060 +0100
+@@ -9066,7 +9066,7 @@ fi
+ LIBTOOL_DEPS="$ltmain"
+ 
+ # Always use our own libtool.
+-LIBTOOL='$(SHELL) $(top_builddir)/libtool'
++LIBTOOL='$(SHELL) libtool'
+ 
+ 
+ 
+diff --git a/Makefile.am b/Makefile.am
+index ca99109..75d4142 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -2,11 +2,8 @@
+ #
+ 
+ AUTOMAKE_OPTIONS = dist-bzip2 subdir-objects 1.5 foreign
+-DIST_SUBDIRS	= compat lib libltdl snmplib scripts icons errors contrib doc helpers src test-suite tools
++DIST_SUBDIRS	= compat lib snmplib scripts icons errors contrib doc helpers src test-suite tools
+ SUBDIRS		= compat lib $(makesnmplib)
+-if USE_LOADABLE_MODULES
+-SUBDIRS += libltdl
+-endif
+ SUBDIRS += scripts icons errors doc helpers src tools test-suite
+ 
+ DISTCLEANFILES = include/stamp-h include/stamp-h[0-9]*
+diff --git a/Makefile.in b/Makefile.in
+index e7f6e7c..faa4737 100644
+--- a/Makefile.in
++++ b/Makefile.in
+@@ -89,7 +89,7 @@ PRE_UNINSTALL = :
+ POST_UNINSTALL = :
+ build_triplet = @build@
+ host_triplet = @host@
+-@USE_LOADABLE_MODULES_TRUE@am__append_1 = libltdl
++# @USE_LOADABLE_MODULES_TRUE@am__append_1 = libltdl
+ subdir = .
+ ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
+ am__aclocal_m4_deps = $(top_srcdir)/acinclude/init.m4 \
+@@ -483,7 +483,7 @@ top_build_prefix = @top_build_prefix@
+ top_builddir = @top_builddir@
+ top_srcdir = @top_srcdir@
+ AUTOMAKE_OPTIONS = dist-bzip2 subdir-objects 1.5 foreign
+-DIST_SUBDIRS = compat lib libltdl snmplib scripts icons errors contrib doc helpers src test-suite tools
++DIST_SUBDIRS = compat lib snmplib scripts icons errors contrib doc helpers src test-suite tools
+ SUBDIRS = compat lib $(makesnmplib) $(am__append_1) scripts icons \
+ 	errors doc helpers src tools test-suite
+ DISTCLEANFILES = include/stamp-h include/stamp-h[0-9]*
+
+diff --git a/src/LoadableModule.cc b/src/LoadableModule.cc
+index 996797e..d993b81 100644
+--- a/src/LoadableModule.cc
++++ b/src/LoadableModule.cc
+@@ -7,7 +7,7 @@
+ #define XSTD_USE_LIBLTDL 1
+ 
+ #if XSTD_USE_LIBLTDL
+-#include "libltdl/ltdl.h" /* generated file */
++#include <ltdl.h> /* generated file */
+ #else
+ #include <dlfcn.h>
+ #endif

@@ -1,0 +1,13 @@
+diff --git a/lib/base64.c b/lib/base64.c
+index 6fd2dea..200399f 100644
+--- a/lib/base64.c
++++ b/lib/base64.c
+@@ -146,7 +146,7 @@ base64_encode(char *result, int result_size, const char *data, int data_size)
+     int char_count = 0;
+     int out_cnt = 0;
+ 
+-    if (!data || !*data || !result || result_size < 1 || data_size < 1)
++    if (!data || !result || result_size < 1 || data_size < 1)
+         return 0;
+ 
+     if (!base64_initialized)
