@@ -2,7 +2,7 @@
 
 Name:     squid34
 Version:  3.4.14
-Release:  9%{?dist}
+Release:  9%{?dist}.3
 Summary:  The Squid proxy caching server
 Epoch:    7
 # See CREDITS for breakdown of non GPLv2+ code
@@ -41,6 +41,18 @@ Patch222: squid-3.3.8-segfault-reboot.patch
 Patch223: squid-3.3.8-ftp.patch
 # https://bugzilla.redhat.com/show_bug.cgi?id=1315662
 Patch224: squid-3.3.8-le-looping.patch
+# https://bugzilla.redhat.com/show_bug.cgi?id=1329126
+Patch225: squid-CVE-2016-4051.patch
+# https://bugzilla.redhat.com/show_bug.cgi?id=1329136
+Patch226: squid-CVE-2016-4052.patch
+# http://www.squid-cache.org/Advisories/SQUID-2016_7.txt
+Patch227: squid-CVE-2016-4553.patch
+# http://www.squid-cache.org/Advisories/SQUID-2016_8.txt
+Patch228: squid-CVE-2016-4554.patch
+# http://www.squid-cache.org/Advisories/SQUID-2016_9.txt
+Patch229: squid-CVE-2016-4555.patch
+# http://www.squid-cache.org/Advisories/SQUID-2016_9.txt
+Patch230: squid-CVE-2016-4556.patch
 
 Buildroot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 Requires: bash >= 2.0
@@ -97,6 +109,12 @@ lookup program (dnsserver), a program for retrieving FTP data
 %patch222 -p1 -b .reboot-segfault
 %patch223 -p1 -b .ftp
 %patch224 -p1 -b .le-looping
+%patch225 -p0 -b .CVE-2016-4051
+%patch226 -p1 -b .CVE-2016-4052
+%patch227 -p0 -b .CVE-2016-4553
+%patch228 -p0 -b .CVE-2016-4554
+%patch229 -p0 -b .CVE-2016-4555
+%patch230 -p0 -b .CVE-2016-4556
 
 %build
 %ifarch sparcv9 sparc64 s390 s390x
@@ -298,6 +316,20 @@ fi
     chgrp squid /var/cache/samba/winbindd_privileged >/dev/null 2>&1 || :
 
 %changelog
+* Mon May 09 2016 Luboš Uhliarik <luhliari@redhat.com> - 7:3.4.14-9.3
+- Resolves: #1334499 - CVE-2016-4554 CVE-2016-4555 CVE-2016-4556
+  squid34: various flaws
+- Resolves: #1334506 - CVE-2016-4553 squid34: squid: Cache poisoning
+  issue in HTTP Request handling
+
+* Fri Apr 29 2016 Luboš Uhliarik <luhliari@redhat.com> - 7:3.4.14-9.2
+- Related: #1330574 - CVE-2016-4051 CVE-2016-4052 CVE-2016-4053 CVE-2016-4054
+  squid34: various flaws
+
+* Fri Apr 29 2016 Luboš Uhliarik <luhliari@redhat.com> - 7:3.4.14-9.1
+- Resolves: #1330574 - CVE-2016-4051 CVE-2016-4052 CVE-2016-4053 CVE-2016-4054
+  squid34: various flaws
+
 * Thu Mar 31 2016 Luboš Uhliarik <luhliari@redhat.com> - 7:3.4.14-9
 - Resolves: #1322364 - squid fails to start in FIPS 140-2 mode
 
