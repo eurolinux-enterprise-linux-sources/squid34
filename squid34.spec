@@ -2,7 +2,7 @@
 
 Name:     squid34
 Version:  3.4.14
-Release:  9%{?dist}.4
+Release:  15%{?dist}
 Summary:  The Squid proxy caching server
 Epoch:    7
 # See CREDITS for breakdown of non GPLv2+ code
@@ -53,8 +53,12 @@ Patch228: squid-CVE-2016-4554.patch
 Patch229: squid-CVE-2016-4555.patch
 # http://www.squid-cache.org/Advisories/SQUID-2016_9.txt
 Patch230: squid-CVE-2016-4556.patch
+# https://bugzilla.redhat.com/show_bug.cgi?id=1303053
+Patch231: squid34-3.4.14-reconf-busy-srv.patch
 # http://www.squid-cache.org/Advisories/SQUID-2016_11.txt
-Patch231: squid-CVE-2016-10002.patch
+Patch232: squid-CVE-2016-10002.patch
+# https://bugzilla.redhat.com/show_bug.cgi?id=1415874
+Patch233: squid34-3.4.14-https-fallback.patch
 
 Buildroot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 Requires: bash >= 2.0
@@ -117,7 +121,9 @@ lookup program (dnsserver), a program for retrieving FTP data
 %patch228 -p0 -b .CVE-2016-4554
 %patch229 -p0 -b .CVE-2016-4555
 %patch230 -p0 -b .CVE-2016-4556
-%patch231 -p0 -b .CVE-2016-10002
+%patch231 -p1 -b .reconf-busy-srv
+%patch232 -p0 -b .CVE-2016-10002
+%patch233 -p1 -b .https-fallback
 
 %build
 %ifarch sparcv9 sparc64 s390 s390x
@@ -319,22 +325,30 @@ fi
     chgrp squid /var/cache/samba/winbindd_privileged >/dev/null 2>&1 || :
 
 %changelog
-* Fri Jan 13 2017 Luboš Uhliarik <luhliari@redhat.com> - 7:3.4.14-9.4
-- Resolves: #1412733 - CVE-2016-10002 squid34: squid: Information disclosure
-  in HTTP request processing
+* Wed Jan 25 2017 Luboš Uhliarik <luhliari@redhat.com> - 7:3.4.14-15
+- Resolves: #1415874 - squid34 does not fallback protocol from IPv6 to IPv4
+  in HTTPS connection even if the fix in bz1303067 is applied
 
-* Mon May 09 2016 Luboš Uhliarik <luhliari@redhat.com> - 7:3.4.14-9.3
-- Resolves: #1334499 - CVE-2016-4554 CVE-2016-4555 CVE-2016-4556
+* Fri Jan 13 2017 Luboš Uhliarik <luhliari@redhat.com> - 7:3.4.14-14
+- Resolves: #1412734  - CVE-2016-10002 squid: Information disclosure in HTTP
+  request processing
+
+* Wed Oct 12 2016 Luboš Uhliarik <luhliari@redhat.com> - 7:3.4.14-13
+- Resolves: #1303053 - Squid crashes with 'assertion failed: disk.cc:377:
+  "fd >= 0"' after reloading the configuration.
+
+* Mon May 09 2016 Luboš Uhliarik <luhliari@redhat.com> - 7:3.4.14-12
+- Resolves: #1334500 - CVE-2016-4554 CVE-2016-4555 CVE-2016-4556
   squid34: various flaws
-- Resolves: #1334506 - CVE-2016-4553 squid34: squid: Cache poisoning
+- Resolves: #1334507 - CVE-2016-4553 squid34: squid: Cache poisoning 
   issue in HTTP Request handling
 
-* Fri Apr 29 2016 Luboš Uhliarik <luhliari@redhat.com> - 7:3.4.14-9.2
-- Related: #1330574 - CVE-2016-4051 CVE-2016-4052 CVE-2016-4053 CVE-2016-4054
+* Tue May 03 2016 Luboš Uhliarik <luhliari@redhat.com> - 7:3.4.14-11
+- Related: #1330575 - CVE-2016-4051 CVE-2016-4052 CVE-2016-4053 CVE-2016-4054 
   squid34: various flaws
 
-* Fri Apr 29 2016 Luboš Uhliarik <luhliari@redhat.com> - 7:3.4.14-9.1
-- Resolves: #1330574 - CVE-2016-4051 CVE-2016-4052 CVE-2016-4053 CVE-2016-4054
+* Thu Apr 28 2016 Luboš Uhliarik <luhliari@redhat.com> - 7:3.4.14-10
+- Resolves: #1330575 - CVE-2016-4051 CVE-2016-4052 CVE-2016-4053 CVE-2016-4054 
   squid34: various flaws
 
 * Thu Mar 31 2016 Luboš Uhliarik <luhliari@redhat.com> - 7:3.4.14-9
